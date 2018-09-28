@@ -1,0 +1,350 @@
+# ---
+# apiVersion: v1
+# kind: Namespace
+# metadata:
+#   name: knative-build
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: $NAMESPACE-admin
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - namespaces
+  - secrets
+  - events
+  - serviceaccounts
+  - configmaps
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - extensions
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - mutatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - apiextensions.k8s.io
+  resources:
+  - customresourcedefinitions
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - build.knative.dev
+  resources:
+  - builds
+  - buildtemplates
+  - clusterbuildtemplates
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - patch
+  - watch
+- apiGroups:
+  - caching.internal.knative.dev
+  resources:
+  - images
+  verbs:
+  - get
+  - list
+  - create
+  - update
+  - delete
+  - deletecollection
+  - patch
+  - watch
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: build-controller
+  namespace: $NAMESPACE
+---
+apiVersion: rbac.authorization.k8s.io/v1beta1
+kind: ClusterRoleBinding
+metadata:
+  name: build-controller-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: $NAMESPACE-admin
+subjects:
+- kind: ServiceAccount
+  name: build-controller
+  namespace: $NAMESPACE
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: builds.build.knative.dev
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  - JSONPath: .status.completionTime
+    name: Completed
+    type: date
+  group: build.knative.dev
+  names:
+    categories:
+    - all
+    - knative
+    kind: Build
+    plural: builds
+  scope: Namespaced
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: buildtemplates.build.knative.dev
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: build.knative.dev
+  names:
+    categories:
+    - all
+    - knative
+    kind: BuildTemplate
+    plural: buildtemplates
+  scope: Namespaced
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: clusterbuildtemplates.build.knative.dev
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: build.knative.dev
+  names:
+    categories:
+    - all
+    - knative
+    kind: ClusterBuildTemplate
+    plural: clusterbuildtemplates
+  scope: Cluster
+  version: v1alpha1
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  name: images.caching.internal.knative.dev
+spec:
+  group: caching.internal.knative.dev
+  names:
+    categories:
+    - all
+    - knative-internal
+    - caching
+    kind: Image
+    plural: images
+    shortNames:
+    - img
+    singular: image
+  scope: Namespaced
+  version: v1alpha1
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: build-controller
+  name: build-controller
+  namespace: $NAMESPACE
+spec:
+  ports:
+  - name: metrics
+    port: 9090
+    protocol: TCP
+    targetPort: 9090
+  selector:
+    app: build-controller
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    role: build-webhook
+  name: build-webhook
+  namespace: $NAMESPACE
+spec:
+  ports:
+  - port: 443
+    targetPort: 443
+  selector:
+    role: build-webhook
+---
+apiVersion: caching.internal.knative.dev/v1alpha1
+kind: Image
+metadata:
+  name: creds-init
+  namespace: $NAMESPACE
+spec:
+  image: $IMAGE_CREDS_INIT
+---
+apiVersion: caching.internal.knative.dev/v1alpha1
+kind: Image
+metadata:
+  name: git-init
+  namespace: $NAMESPACE
+spec:
+  image: $IMAGE_GIT_INIT
+---
+apiVersion: caching.internal.knative.dev/v1alpha1
+kind: Image
+metadata:
+  name: gcs-fetcher
+  namespace: $NAMESPACE
+spec:
+  image: $IMAGE_GCS_FETCHER
+---
+apiVersion: caching.internal.knative.dev/v1alpha1
+kind: Image
+metadata:
+  name: nop
+  namespace: $NAMESPACE
+spec:
+  image: $IMAGE_NOP
+---
+apiVersion: v1
+data:
+  loglevel.controller: info
+  loglevel.creds-init: info
+  loglevel.git-init: info
+  loglevel.webhook: info
+  zap-logger-config: |
+    {
+      "level": "info",
+      "development": false,
+      "sampling": {
+        "initial": 100,
+        "thereafter": 100
+      },
+      "outputPaths": ["stdout"],
+      "errorOutputPaths": ["stderr"],
+      "encoding": "json",
+      "encoderConfig": {
+        "timeKey": "",
+        "levelKey": "level",
+        "nameKey": "logger",
+        "callerKey": "caller",
+        "messageKey": "msg",
+        "stacktraceKey": "stacktrace",
+        "lineEnding": "",
+        "levelEncoder": "",
+        "timeEncoder": "",
+        "durationEncoder": "",
+        "callerEncoder": ""
+      }
+    }
+kind: ConfigMap
+metadata:
+  name: config-logging
+  namespace: $NAMESPACE
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: build-controller
+  namespace: $NAMESPACE
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: build-controller
+    spec:
+      containers:
+      - args:
+        - -logtostderr
+        - -stderrthreshold
+        - INFO
+        - -creds-image
+        - $IMAGE_CREDS_INIT
+        - -git-image
+        - $IMAGE_GIT_INIT
+        - -nop-image
+        - $IMAGE_NOP
+        image: $IMAGE_CONTROLLER
+        name: build-controller
+        volumeMounts:
+        - mountPath: /etc/config-logging
+          name: config-logging
+      serviceAccountName: build-controller
+      volumes:
+      - configMap:
+          name: config-logging
+        name: config-logging
+---
+apiVersion: apps/v1beta1
+kind: Deployment
+metadata:
+  name: build-webhook
+  namespace: $NAMESPACE
+spec:
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: build-webhook
+        role: build-webhook
+    spec:
+      containers:
+      - args:
+        - -logtostderr
+        - -stderrthreshold
+        - INFO
+        image: $IMAGE_WEBHOOK
+        name: build-webhook
+        volumeMounts:
+        - mountPath: /etc/config-logging
+          name: config-logging
+      serviceAccountName: build-controller
+      volumes:
+      - configMap:
+          name: config-logging
+        name: config-logging

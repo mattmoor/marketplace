@@ -1,0 +1,55 @@
+application_api_version: v1beta1
+properties:
+  APP_INSTANCE_NAME:
+    type: string
+    x-google-marketplace:
+      type: NAME
+  NAMESPACE:
+    type: string
+    default: knative-build
+    x-google-marketplace:
+      type: NAMESPACE
+  IMAGE_CREDS_INIT:
+    type: string
+    default: gcr.io/mattmoor-public/github.com/knative/build/cmd/creds-init@sha256:adb98718a51697539476237a33b851249417c71b19c0f617a0e2b08e2196eb33
+    x-google-marketplace:
+      type: IMAGE
+  IMAGE_GIT_INIT:
+    type: string
+    default: gcr.io/mattmoor-public/github.com/knative/build/cmd/git-init@sha256:4c9e2eea54954d3aaec01c3eaac5deedec67fc3e53cde2146975032297f1fa33
+    x-google-marketplace:
+      type: IMAGE
+  IMAGE_GCS_FETCHER:
+    type: string
+    default: IMAGE_JENKINS
+    x-google-marketplace:
+      type: IMAGE
+  IMAGE_NOP:
+    type: string
+    default: gcr.io/mattmoor-public/github.com/knative/build/cmd/nop@sha256:356e6d60e912c5b4bad0ce6f801f199152ac72894c9b2273affcbbd50ae90f34
+    x-google-marketplace:
+      type: IMAGE
+  IMAGE_CONTROLLER:
+    type: string
+    default: gcr.io/mattmoor-public/github.com/knative/build/cmd/controller@sha256:b4c862ff856ef68d471f8d2882d0bc2af015961037202f01571373c61ea3fb89
+    x-google-marketplace:
+      type: IMAGE
+  IMAGE_WEBHOOK:
+    type: string
+    default: gcr.io/mattmoor-public/github.com/knative/build/cmd/webhook@sha256:523193e7aff7ea0d4df37be320ed3a9246b5edabc41489a2348531d7c8d2c4a4
+    x-google-marketplace:
+      type: IMAGE
+
+  # TODO(mattmoor): How to map the ClusterRole here?
+  # controller.serviceAccount:
+  #   type: string
+  #   x-google-marketplace:
+  #     type: SERVICE_ACCOUNT
+  #     roles:
+  #     - type: ClusterRole
+  #       rulesType: PREDEFINED
+  #       rulesFromRoleName: edit
+
+required:
+- APP_INSTANCE_NAME
+- NAMESPACE

@@ -1,0 +1,50 @@
+---
+apiVersion: app.k8s.io/v1beta1
+kind: Application
+metadata:
+  name: "$APP_INSTANCE_NAME"
+  annotations:
+    marketplace.cloud.google.com/deploy-info: '{partner_id: "knative", product_id: "build", partner_name: "Google Cloud Build"}'
+  labels:
+    app.kubernetes.io/name: "$APP_INSTANCE_NAME"
+spec:
+  descriptor:
+    version: '0.1.1'
+    type: KnativeBuild
+    description: |-
+      Knative Build is a building block for supporting on-cluster Builds.
+
+      # Support
+      Google does not offer support for this solution. However, community support is available on
+      [Github](https://github.com/knative/build).
+    maintainers:
+    - name: Knative Build
+      url: https://github.com/knative/build
+    links:
+    - description: 'User Guide'
+      url: https://github.com/knative/docs/tree/master/build#knative-build
+    notes: |-
+      See also our [build-templates](https://github.com/knative/build-templates) repo for
+      a collection of artisan hand-crafted on-cluster build templates.
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: "$APP_INSTANCE_NAME"
+  componentKinds:
+  - group: v1
+    kind: Namespace
+  - group: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+  - group: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+  - group: apiextensions.k8s.io/v1beta1
+    kind: CustomResourceDefinition
+  - group: caching.internal.knative.dev/v1alpha1
+    kind: Image
+  - group: v1
+    kind: ConfigMap
+  - group: v1
+    kind: ServiceAccount
+  - group: apps/v1beta1
+    kind: Deployment
+  - group: v1
+    kind: Service
